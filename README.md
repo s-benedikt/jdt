@@ -1,8 +1,8 @@
 # JDT
 
-This repository contains a parser and validator for the JSON Document Type (JDT) Schema Language and several accsessories.
+This repository contains a parser and validator for the JSON Document Type (JDT) Schema Language and several accessories.
 
-It is contains the following files and folders:
+It contains the following files and folders:
 - `parser.py`: The main parser and validator implementation.
 - `lexer.py`: The lexer for tokenizing the JDT schema.
 - `test_parser.py`: A set of test cases to validate the functionality of the parser and validator.
