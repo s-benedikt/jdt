@@ -33,7 +33,7 @@ Comments are marked by `"""` and are valid until closed with the same sequence.
 ## Valid Names
 
 Names can contain any Unicode character except for `"""`  and cannot be `is` or contain a space.
-Users can use any breakout character for `is`: like `#is, \is, $is, ...`. It can't be just `is`.
+Users can use any breakout character for `is`: like `#is, \is, $is, ...`. It can't be just `is`. For proprietary names, quotation marks `"` can be used. They must be closed and cannot contain other quotation marks.
 
 Example for valid names:
 ```
@@ -54,12 +54,15 @@ gän"se"füß"chen
 #is
 \is
 is$
+"is"
+"name:"
 ```
 Not valid names:
 ```
 is
 b"""1
 n a m e
+"na"""me"
 ```
 It’s the developer's responsibility to ensure their names don’t violate JSON’s name requirements.
 
@@ -101,38 +104,33 @@ Operator constraints:
 - or
 - not
 
-The `or` operator requires parentheses in complex constraint schemas and always evaluates its immediate neighbours.
-There is no hierarchy of operators:
-```
-is (true and required) or (false and optional)
-```
-does not make any sense and is not allowed.
-Despite the common ranking, JDT will evaluate logic from left to right.
-```
-... is a and (b or c) and d and e
-```
-evaluates to:
-$$
-a \land (b \lor c ) \land d \land e
-$$
+Operators follow the standard precedence rules, with `not` having the highest precedence, followed by `and`, and then `or`. Parentheses can be used to explicitly define the order of operations.
 
 
 
 Array constraints:
 - array
 - array(datatype)
-- array(array(datatype))
+- array(datatype, constraint)
+- array(array(datatype, constraint), constraint)
 
 Arrays can be nested. If no datatype is specified, all datatypes validate. 
-As of now, constraints can't be used inside arrays.
+Constraints can be used inside arrays:
+```
+hobbies is array(string), required
+hobbies is array(string, longer 0), required
+hobbies is array(string, longer 0, not "coding"), required
+```
+That constraints apply directly to the array layer they are written inside.
+
 
 Value and length constraints:
-- minimum [number]
-- maximum [number]
-- longer [number]
-- shorter [number]
-- larger [number]
-- smaller [number]
+- minimum [number]  for $>=$
+- maximum [number]  for $<=$
+- longer [number]   for string length or array length $>=$
+- shorter [number]  for string length or array length $<=$
+- larger [number]   for numeric values $>$
+- smaller [number]  for numeric values $<$
 
 Equality constraints:
 - number
@@ -140,18 +138,22 @@ Equality constraints:
 - boolean
 - null
 
-Regex constraints:
-- match(regex)
+Match constraints:
+- match(""" regex """)
+- match([key])
 
-Regex and strings must not contain `"""`.
+Regexes and strings must not contain `"""`. If a key is not found in the schema, it is considered invalid for a match constraint.
 
 Undefined constraints are not used for a key in the schema, but rather for unknown, potential keys:
 - closed
 - open
-- unordered
-- ordered
 
-JDT enforces an open, unordered schema as the standard. Any key that is not defined in the schema is considered valid. If a key is not in order, as with the schema, the document is considered valid unless stated otherwise. Undefined constraints can only be defined once per container at its beginning or for the entire document.
+ JDT enforces an open schem. Any key that is not defined in the schema is considered valid unless stated otherwise. Undefined constraints can only be defined once per container at its beginning or for the entire document.
+
+The concardination of constraints is done with a comma `,`:
+```
+name is string, required, longer 0
+```
 
 ## Defined Data Types
 
@@ -159,8 +161,8 @@ JDT allows custom-defined data types with the keyword `defined`:
 ```
 is defined Address:
     street is string
-    number is number and minimum 1
-    zip is number and longer 4 and shorter 6
+    number is number, minimum 1
+    zip is number, not null
 
 user:
     home is Address
@@ -178,18 +180,18 @@ name is string
 Nested Objects and Constraints:
 ```
 user:
-    id is number and required and minimum 0
-    name is string and optional
+    id is number, required, minimum 0
+    name is string, optional
 ```
 Complex Objects and Constraints:
 ```
 is type object
 user: 
-    is closed and ordered
-    id is number and required and not null
-    name is required and not boolean
-    age is optional and (number or null)
-    hobbies is array(string) and required
+    is closed
+    id is number, required, not null
+    name is required, not boolean
+    age is optional, (number or null)
+    hobbies is array(string), required
     eyecolor is "blue" or "green" or "brown"
 
 ```
@@ -232,30 +234,30 @@ is version https://www.jdt-schema.com/version/1
 is owner https://www.uni-regensburg.de
 is type object
 
-is closed and ordered
+is closed
 
 is defined Address:
     street is string
-    number is number and minimum 1
-    zip is number and longer 4 and shorter 6
+    number is number, minimum 1
+    zip is number, not null
 
 is defined Payment:
-    number is number and required and minimum 13 and maximum 19
-    name is string and required
-    expires is match(\b(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])\b) and required
-    cvv is number and required and minimum 3 and maximum 4
+    number is number, required, minimum 13, maximum 19
+    name is string, required
+    expires is match("""\b(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])\b"""), required
+    cvv is number, required, minimum 3, maximum 4
 
 is defined Year:
-    year is number and larger 2020 and smaller 2030
+    year is number, larger 2020, smaller 2030
 
 user:
-    id is number and required and minimum 0
-    name is string and longer 0 and required
-    address is Address and required
-    sex is string and optional
+    id is number, required, minimum 0
+    name is string, longer 0, required
+    address is Address, required
+    sex is string, optional
     height is number
-    eyecolor is string and "blue" or "green" or "brown" and optional
-    creditCard is Payment and required
+    eyecolor is string, "blue" or "green" or "brown", optional
+    creditCard is Payment, required
     subscribed is boolean
     memberSince is Year
 ```
@@ -266,14 +268,14 @@ Validates:
 {
   "$schema": "https://www.uni-regensburg.de/jdt-schema",
   "$version": "https://www.jdt-schema.com/version/1",
-  "owner": "https://www.uni-regensburg.de",
+  "$owner": "https://www.uni-regensburg.de",
   "id": 101,
   "name": "Jane Doe",
   "address": {
     "street": "Universitätsstraße",
     "number": 31,
     "zip": 93053
-  }
+  },
   "sex": "female",
   "height": 172,
   "eyecolor": "green",
@@ -282,9 +284,9 @@ Validates:
     "name": "Jane Doe",
     "expires": "14/08",
     "cvv": 987
-  }
+  },
   "subscribed": true,
   "memberSince": {
     "year": 2025
-
+  }
 }

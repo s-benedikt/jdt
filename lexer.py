@@ -25,8 +25,6 @@ class TokenType(Enum):
     ARRAY = auto()
     CLOSED = auto()
     OPEN = auto()
-    ORDERED = auto()
-    UNORDERED = auto()
     MATCH = auto()
     MINIMUM = auto()
     MAXIMUM = auto()
@@ -84,8 +82,6 @@ class Lexer:
         'array': TokenType.ARRAY,
         'closed': TokenType.CLOSED,
         'open': TokenType.OPEN,
-        'ordered': TokenType.ORDERED,
-        'unordered': TokenType.UNORDERED,
         'match': TokenType.MATCH,
         'minimum': TokenType.MINIMUM,
         'maximum': TokenType.MAXIMUM,
@@ -225,35 +221,45 @@ class Lexer:
                 self.advance()
                 self.advance()
                 break
-            result += self.advance()
+            result += self.advance() # type: ignore
         
         return result
     
     def read_number(self) -> float:
         """Read a number (int or float)."""
         result = ""
-        while self.peek() and (self.peek().isdigit() or self.peek() == '.'):
-            result += self.advance()
+        while self.peek() and (self.peek().isdigit() or self.peek() == '.'): # type: ignore
+            result += self.advance() # type: ignore
         
         if '.' in result:
             return float(result)
         return int(result)
     
     def read_name(self) -> str:
-        """Read a name/identifier."""
+        """Read a name/identifier, supporting quoted sections."""
         result = ""
         
         while self.peek():
             ch = self.peek()
+            # Stop at triple quotes (comment)
             if ch == '"' and self.peek(1) == '"' and self.peek(2) == '"':
                 break
-            if ch in (' ', '\n', '\t', ':', '(', ')', '"'):
-                if ch == '"' and result:
-                    result += self.advance()
-                else:
-                    break
+            # Handle quoted sections within names
+            if ch == '"':
+                result += self.advance()  # type: ignore # Add opening quote
+                while True:
+                    ch = self.peek()
+                    if ch is None:
+                        self.error("Unterminated quoted section in name")
+                    if ch == '"' and not (self.peek(1) == '"' and self.peek(2) == '"'):
+                        result += self.advance()  # type: ignore # Add closing quote
+                        break
+                    result += self.advance() # type: ignore
+            # Stop at delimiters
+            elif ch in (' ', '\n', '\t', ':', '(', ')'):
+                break
             else:
-                result += self.advance()
+                result += self.advance() # type: ignore
         
         return result
     
@@ -282,10 +288,16 @@ class Lexer:
                 self.advance()
                 continue
             
-            # Comment
+            # Comment or regex
             if ch == '"' and self.peek(1) == '"' and self.peek(2) == '"':
-                comment = self.read_comment()
-                tokens.append(Token(TokenType.COMMENT, comment, self.line, self.col))
+                content = self.read_comment()
+                last_token = tokens[-1] if tokens else None
+                # If last token is LPAREN and token before that is MATCH, it's a regex
+                if (last_token and last_token.type == TokenType.LPAREN and 
+                    len(tokens) > 1 and tokens[-2].type == TokenType.MATCH):
+                    tokens.append(Token(TokenType.REGEX, content, self.line, self.col))
+                else:
+                    tokens.append(Token(TokenType.COMMENT, content, self.line, self.col))
                 continue
             
             # String literal

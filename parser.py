@@ -21,7 +21,6 @@ class PropertyDef:
     name: str
     constraint: Optional[Constraint] = None
     closed: bool = False
-    ordered: bool = False
     is_container: bool = False
     children: Dict[str, 'PropertyDef'] = field(default_factory=dict)
 
@@ -34,7 +33,6 @@ class Schema:
     version_uri: Optional[str] = None
     owner_uri: Optional[str] = None
     closed: bool = False
-    ordered: bool = False
     properties: Dict[str, PropertyDef] = field(default_factory=dict)
     custom_types: Dict[str, PropertyDef] = field(default_factory=dict)
 
@@ -126,24 +124,18 @@ class Parser:
                 self.advance()
             else:
                 self.error(f"Expected type, got {type_token.type}")
-        elif token.type in (TokenType.CLOSED, TokenType.ORDERED, TokenType.OPEN, TokenType.UNORDERED):
+        elif token.type in (TokenType.CLOSED, TokenType.OPEN):
             self.parse_global_constraints()
     
     def parse_global_constraints(self):
-        """Parse global constraints like closed, ordered."""
+        """Parse global constraints like closed, open."""
         while True:
             token = self.current_token()
             if token.type == TokenType.CLOSED:
                 self.schema.closed = True
                 self.advance()
-            elif token.type == TokenType.ORDERED:
-                self.schema.ordered = True
-                self.advance()
             elif token.type == TokenType.OPEN:
                 self.schema.closed = False
-                self.advance()
-            elif token.type == TokenType.UNORDERED:
-                self.schema.ordered = False
                 self.advance()
             elif token.type == TokenType.AND:
                 self.advance()
@@ -323,7 +315,8 @@ class Parser:
         if token.type == TokenType.MATCH:
             self.advance()
             self.expect(TokenType.LPAREN)
-            pattern = self.expect(TokenType.NAME).value
+            regex_token = self.expect(TokenType.REGEX)
+            pattern = regex_token.value
             self.expect(TokenType.RPAREN)
             return Constraint("match", value=pattern)
         
