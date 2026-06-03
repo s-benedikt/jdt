@@ -3,3 +3,4 @@ __pycache__/
 IMPLEMENTATION.md
 /examples/
 usage_examples.py
+.venv/

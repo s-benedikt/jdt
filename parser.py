@@ -40,6 +40,37 @@ class Schema:
 class Parser:
     """Parse JDT schema and validate JSON."""
     
+    NAME_TOKENS = {
+        TokenType.NAME,
+        TokenType.DEFINED,
+        TokenType.REQUIRED,
+        TokenType.OPTIONAL,
+        TokenType.AND,
+        TokenType.OR,
+        TokenType.NOT,
+        TokenType.ARRAY,
+        TokenType.CLOSED,
+        TokenType.OPEN,
+        TokenType.MATCH,
+        TokenType.MINIMUM,
+        TokenType.MAXIMUM,
+        TokenType.LONGER,
+        TokenType.SHORTER,
+        TokenType.LARGER,
+        TokenType.SMALLER,
+        TokenType.SCHEMA,
+        TokenType.VERSION,
+        TokenType.OWNER,
+        TokenType.TYPE,
+        TokenType.TRUE,
+        TokenType.FALSE,
+        TokenType.NULL,
+        TokenType.STRING_TYPE,
+        TokenType.NUMBER_TYPE,
+        TokenType.BOOLEAN_TYPE,
+        TokenType.OBJECT_TYPE,
+    }
+    
     def __init__(self, schema_text: str):
         self.schema_text = schema_text
         lexer = Lexer(schema_text)
@@ -79,6 +110,12 @@ class Parser:
         """Skip newlines and comments"""
         while self.current_token().type in (TokenType.NEWLINE, TokenType.COMMENT):
             self.advance()
+    
+    def parse_name_token(self) -> Optional[Token]:
+        token = self.current_token()
+        if token.type in self.NAME_TOKENS and token.type != TokenType.IS:
+            return token
+        return None
     
     def parse(self) -> Schema:
         self.skip_trivia()
@@ -146,7 +183,10 @@ class Parser:
     def parse_defined_type(self):
         """Parse a defined custom type."""
         self.expect(TokenType.DEFINED)
-        name_token = self.expect(TokenType.NAME)
+        name_token = self.parse_name_token()
+        if not name_token:
+            self.error("Expected name after 'defined'")
+        self.advance()
         name = name_token.value
         
         self.expect(TokenType.COLON)
@@ -173,11 +213,11 @@ class Parser:
                 break
             elif token.type in (TokenType.EOF,):
                 break
-            
-            if token.type != TokenType.NAME:
+
+            name_token = self.parse_name_token()
+            if not name_token:
                 break
-            
-            name = token.value
+            name = name_token.value
             self.advance()
             
             is_container = self.current_token().type == TokenType.COLON
@@ -348,8 +388,12 @@ class Validator:
     def validate_object(self, obj: Dict, props: Dict[str, PropertyDef], path: str, errors: List[str], custom_types: Dict[str, PropertyDef], closed: bool = False):
         """Validate an object against expected properties."""
         seen_keys = set()
+        root_meta = {"$schema", "$version", "$owner", "$type"}
         
         for key, val in obj.items():
+            if path == "$" and key in root_meta:
+                self.validate_root_metadata(key, val, errors)
+                continue
             seen_keys.add(key)
             
             if key in props:
@@ -370,6 +414,20 @@ class Validator:
             if key not in seen_keys:
                 if prop_def.constraint and self.constraint_requires(prop_def.constraint):
                     errors.append(f"{path}.{key}: Required property missing")
+
+    def validate_root_metadata(self, key: str, value: Any, errors: List[str]):
+        """Validate root-level metadata keys like $schema, $version, $owner."""
+        if not isinstance(value, str):
+            errors.append(f"$.{key.lstrip('$')}: Metadata must be a string")
+            return
+        if key == "$schema" and self.schema.schema_uri and value != self.schema.schema_uri:
+            errors.append("$.schema: Metadata does not match schema declaration")
+        elif key == "$version" and self.schema.version_uri and value != self.schema.version_uri:
+            errors.append("$.version: Metadata does not match schema declaration")
+        elif key == "$owner" and self.schema.owner_uri and value != self.schema.owner_uri:
+            errors.append("$.owner: Metadata does not match schema declaration")
+        elif key == "$type" and self.schema.root_type and value != self.schema.root_type:
+            errors.append("$.type: Metadata does not match schema declaration")
     
     def constraint_requires(self, constraint: Constraint) -> bool:
         """Check if constraint requires a value."""
@@ -431,9 +489,17 @@ class Validator:
         if constraint.type == "maximum":
             return isinstance(value, (int, float)) and value <= constraint.value
         if constraint.type == "longer":
-            return isinstance(value, str) and len(value) > constraint.value
+            if isinstance(value, (str, list)):
+                return len(value) >= constraint.value
+            if isinstance(value, int) and not isinstance(value, bool):
+                return len(str(abs(value))) >= constraint.value
+            return False
         if constraint.type == "shorter":
-            return isinstance(value, str) and len(value) < constraint.value
+            if isinstance(value, (str, list)):
+                return len(value) <= constraint.value
+            if isinstance(value, int) and not isinstance(value, bool):
+                return len(str(abs(value))) <= constraint.value
+            return False
         if constraint.type == "larger":
             return isinstance(value, (int, float)) and value > constraint.value
         if constraint.type == "smaller":

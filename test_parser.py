@@ -105,7 +105,7 @@ test_case(
 # Test 9: Regex validation
 test_case(
     "Regex pattern matching",
-    'email is string and required and match([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Z|a-z]{2,})',
+    'email is string and required and match("""[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}""")',
     '{"email": "user@example.com"}',
     True
 )

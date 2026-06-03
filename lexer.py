@@ -256,7 +256,7 @@ class Lexer:
                         break
                     result += self.advance() # type: ignore
             # Stop at delimiters
-            elif ch in (' ', '\n', '\t', ':', '(', ')'):
+            elif ch in (' ', '\n', '\t', ':', '(', ')', ','):
                 break
             else:
                 result += self.advance() # type: ignore
@@ -330,6 +330,11 @@ class Lexer:
             
             if ch == ':':
                 tokens.append(Token(TokenType.COLON, None, self.line, self.col))
+                self.advance()
+                continue
+
+            if ch == ',':
+                tokens.append(Token(TokenType.AND, None, self.line, self.col))
                 self.advance()
                 continue
             

@@ -229,9 +229,9 @@ This is valid. The following is not:
 ## Longer Example
 
 ```
-is schema https://www.uni-regensburg.de/jdt-schema
-is version https://www.jdt-schema.com/version/1
-is owner https://www.uni-regensburg.de
+is schema "https://www.uni-regensburg.de/jdt-schema"
+is version "https://www.jdt-schema.com/version/1"
+is owner "https://www.uni-regensburg.de"
 is type object
 
 is closed
@@ -242,10 +242,10 @@ is defined Address:
     zip is number, not null
 
 is defined Payment:
-    number is number, required, minimum 13, maximum 19
+    number is number, required, longer 13, shorter 19
     name is string, required
     expires is match("""\b(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])\b"""), required
-    cvv is number, required, minimum 3, maximum 4
+    cvv is number, required, longer 3, shorter 4
 
 is defined Year:
     year is number, larger 2020, smaller 2030
@@ -269,24 +269,27 @@ Validates:
   "$schema": "https://www.uni-regensburg.de/jdt-schema",
   "$version": "https://www.jdt-schema.com/version/1",
   "$owner": "https://www.uni-regensburg.de",
-  "id": 101,
-  "name": "Jane Doe",
-  "address": {
-    "street": "Universitätsstraße",
-    "number": 31,
-    "zip": 93053
-  },
-  "sex": "female",
-  "height": 172,
-  "eyecolor": "green",
-  "creditCard": {
-    "number": 4532123456789012,
+  "user": {
+    "id": 101,
     "name": "Jane Doe",
-    "expires": "14/08",
-    "cvv": 987
-  },
-  "subscribed": true,
-  "memberSince": {
-    "year": 2025
+    "address": {
+      "street": "Universitätsstraße",
+      "number": 31,
+      "zip": 93053
+    },
+    "sex": "female",
+    "height": 172,
+    "eyecolor": "green",
+    "creditCard": {
+      "number": 4532123456789012,
+      "name": "Jane Doe",
+      "expires": "14/08",
+      "cvv": 987
+    },
+    "subscribed": true,
+    "memberSince": {
+      "year": 2025
+    }
   }
 }
+```
