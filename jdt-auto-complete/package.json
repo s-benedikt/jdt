@@ -26,6 +26,13 @@
         "aliases": ["JDT Schema", "jdt"],
         "extensions": [".jdt"]
       }
+    ],
+    "grammars": [
+      {
+        "language": "jdt",
+        "scopeName": "source.jdt",
+        "path": "./syntaxes/jdt.tmLanguage.json"
+      }
     ]
   },
   "scripts": {

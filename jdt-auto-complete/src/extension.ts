@@ -19,27 +19,48 @@ export function activate(context: vscode.ExtensionContext) {
         return types;
     };
 
-    // Determine context: are we after 'is'? in a constraint chain? at container level?
+    // Determine context using multi-line indentation analysis
     const getContext = (document: vscode.TextDocument, position: vscode.Position): string => {
         const line = document.lineAt(position.line).text;
         const beforeCursor = line.substring(0, position.character);
         
-        // Check if we're in a constraint definition (after 'is')
+        // 1. Are we typing a constraint on the current line?
         if (/\bis\s*$/.test(beforeCursor)) {
             return 'after-is';
         }
-        // Check if we're chaining constraints (after constraint keyword)
-        if (/\b(and|or)\s*$/.test(beforeCursor)) {
+        if (/\b(and|or|not)\s*$/.test(beforeCursor) || /,\s*$/.test(beforeCursor)) {
             return 'chain-constraint';
         }
-        // Check if we're at container level (after ':')
-        if (/:\s*$/.test(beforeCursor)) {
-            return 'container-body';
-        }
-        // Check if line starts with 'is ' (root level)
-        if (/^\s*is\s/.test(line)) {
+        
+        // 2. Multi-line context analysis based on indentation
+        const currentIndent = line.match(/^\s*/)?.[0].length || 0;
+        
+        // At root level (no indentation)
+        if (currentIndent === 0) {
+            if (/^\s*is\s/.test(line)) {
+                return 'type-definition'; // e.g. "is defined User:"
+            }
             return 'root-level';
         }
+        
+        // If we are indented, trace back to the parent container
+        if (currentIndent > 0) {
+            for (let i = position.line - 1; i >= 0; i--) {
+                const prevLine = document.lineAt(i).text;
+                if (prevLine.trim() === '' || prevLine.trim().startsWith('"""')) {
+                    continue;
+                }
+                
+                const prevIndent = prevLine.match(/^\s*/)?.[0].length || 0;
+                if (prevIndent < currentIndent) {
+                    if (prevLine.trim().endsWith(':')) {
+                        return 'container-body';
+                    }
+                    break;
+                }
+            }
+        }
+        
         return 'default';
     };
 
@@ -73,13 +94,37 @@ export function activate(context: vscode.ExtensionContext) {
                     ['string', 'number', 'boolean', 'null', 'true', 'false'].forEach(type => {
                         const item = new vscode.CompletionItem(type, vscode.CompletionItemKind.TypeParameter);
                         item.detail = 'JDT Simple Type';
+                        item.sortText = '1';
                         completions.push(item);
                     });
+
+                    // Defined types (if available)
+                    definedTypes.forEach(dt => {
+                        const item = new vscode.CompletionItem(dt.name, vscode.CompletionItemKind.Class);
+                        item.detail = `Custom data type (defined on line ${dt.line + 1})`;
+                        item.sortText = '1';
+                        completions.push(item);
+                    });
+
+                    // Array constraint
+                    const arraySnippet = new vscode.CompletionItem('array', vscode.CompletionItemKind.Snippet);
+                    arraySnippet.insertText = new vscode.SnippetString('array(${1:datatype})');
+                    arraySnippet.detail = 'Array constraint with optional datatype';
+                    arraySnippet.sortText = '2';
+                    completions.push(arraySnippet);
+
+                    // Regex match - corrected format (uses triple quotes)
+                    const matchSnippet = new vscode.CompletionItem('match', vscode.CompletionItemKind.Snippet);
+                    matchSnippet.insertText = new vscode.SnippetString('match("""${1:regex}""")');
+                    matchSnippet.detail = 'Regex constraint for pattern matching';
+                    matchSnippet.sortText = '2';
+                    completions.push(matchSnippet);
 
                     // Occurrence constraints
                     ['required', 'optional'].forEach(occ => {
                         const item = new vscode.CompletionItem(occ, vscode.CompletionItemKind.Keyword);
                         item.detail = `Occurrence: ${occ === 'optional' ? 'Zero or one' : 'Exactly one'}`;
+                        item.sortText = '3';
                         completions.push(item);
                     });
 
@@ -88,6 +133,7 @@ export function activate(context: vscode.ExtensionContext) {
                         ['and', 'or', 'not'].forEach(op => {
                             const item = new vscode.CompletionItem(op, vscode.CompletionItemKind.Operator);
                             item.detail = 'JDT Operator';
+                            item.sortText = '0_op'; // High priority when chaining
                             completions.push(item);
                         });
                     }
@@ -96,6 +142,7 @@ export function activate(context: vscode.ExtensionContext) {
                     ['minimum', 'maximum', 'longer', 'shorter', 'larger', 'smaller'].forEach(vc => {
                         const item = new vscode.CompletionItem(vc, vscode.CompletionItemKind.Keyword);
                         item.detail = 'Value/Length constraint (requires number after)';
+                        item.sortText = '4';
                         completions.push(item);
                     });
 
@@ -103,32 +150,15 @@ export function activate(context: vscode.ExtensionContext) {
                     ['closed', 'open', 'unordered', 'ordered'].forEach(uc => {
                         const item = new vscode.CompletionItem(uc, vscode.CompletionItemKind.Keyword);
                         item.detail = 'Undefined key constraint';
+                        item.sortText = '5';
                         completions.push(item);
                     });
-
-                    // Array constraint
-                    const arraySnippet = new vscode.CompletionItem('array', vscode.CompletionItemKind.Snippet);
-                    arraySnippet.insertText = new vscode.SnippetString('array(${1:datatype})');
-                    arraySnippet.detail = 'Array constraint with optional datatype';
-                    completions.push(arraySnippet);
-
-                    // Defined types (if available)
-                    definedTypes.forEach(dt => {
-                        const item = new vscode.CompletionItem(dt.name, vscode.CompletionItemKind.Class);
-                        item.detail = `Custom data type (defined on line ${dt.line + 1})`;
-                        completions.push(item);
-                    });
-
-                    // Regex match - corrected format (no triple quotes)
-                    const matchSnippet = new vscode.CompletionItem('match', vscode.CompletionItemKind.Snippet);
-                    matchSnippet.insertText = new vscode.SnippetString('match(${1:regex})');
-                    matchSnippet.detail = 'Regex constraint for pattern matching';
-                    completions.push(matchSnippet);
 
                     // Parentheses for complex expressions
                     const parenSnippet = new vscode.CompletionItem('()', vscode.CompletionItemKind.Snippet);
                     parenSnippet.insertText = new vscode.SnippetString('(${1:constraint})');
                     parenSnippet.detail = 'Group constraints';
+                    parenSnippet.sortText = '6';
                     completions.push(parenSnippet);
 
                     return completions;
