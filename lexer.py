@@ -16,7 +16,7 @@ class TokenType(Enum):
     
     # Keywords
     IS = auto()
-    DEFINED = auto()
+    DEFINE = auto()
     REQUIRED = auto()
     OPTIONAL = auto()
     AND = auto()
@@ -73,7 +73,7 @@ class Lexer:
     
     KEYWORDS = {
         'is': TokenType.IS,
-        'defined': TokenType.DEFINED,
+        'define': TokenType.DEFINE,
         'required': TokenType.REQUIRED,
         'optional': TokenType.OPTIONAL,
         'and': TokenType.AND,

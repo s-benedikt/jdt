@@ -15,7 +15,7 @@ from parser import Parser, Validator, parse_and_validate
 print("Setting up schemas and test data...")
 
 jdt_schema_text = r'''
-is defined User:
+define User:
     id is number and required
     name is string and required
     email is string and required and match("""[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}""")

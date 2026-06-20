@@ -192,9 +192,9 @@ name is string, required, longer 0
 
 ## Defined Data Types
 
-JDT allows custom-defined data types with the keyword `defined`:
+JDT allows custom-defined data types with the keyword `define`:
 ```
-is defined Address:
+define Address:
     street is string
     number is number, minimum 1
     zip is number, not null
@@ -271,18 +271,18 @@ is type object
 
 is closed, ordered
 
-is defined Address:
+define Address:
     street is string
     number is number, minimum 1
     zip is number, not null
 
-is defined Payment:
+define Payment:
     number is number, required, minimum 13, maximum 19
     name is string, required
     expires is match("""\b(0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])\b"""), required
     cvv is number, required, minimum 3, maximum 4
 
-is defined Year:
+define Year:
     year is number, larger 2020, smaller 2030
 
 user:

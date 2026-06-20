@@ -42,7 +42,7 @@ class Parser:
     
     NAME_TOKENS = {
         TokenType.NAME,
-        TokenType.DEFINED,
+        TokenType.DEFINE,
         TokenType.REQUIRED,
         TokenType.OPTIONAL,
         TokenType.AND,
@@ -121,13 +121,12 @@ class Parser:
         self.skip_trivia()
         
         # Parse root declarations and custom types
-        while self.current_token().type == TokenType.IS:
-            self.advance()
-            
+        while self.current_token().type in (TokenType.IS, TokenType.DEFINE):
             # Check if this is a custom type definition
-            if self.current_token().type == TokenType.DEFINED:
+            if self.current_token().type == TokenType.DEFINE:
                 self.parse_defined_type()
             else:
+                self.advance()
                 self.parse_root_declaration()
             
             self.skip_trivia()
@@ -182,10 +181,10 @@ class Parser:
     
     def parse_defined_type(self):
         """Parse a defined custom type."""
-        self.expect(TokenType.DEFINED)
+        self.expect(TokenType.DEFINE)
         name_token = self.parse_name_token()
         if not name_token:
-            self.error("Expected name after 'defined'")
+            self.error("Expected name after 'define'")
         self.advance()
         name = name_token.value
         

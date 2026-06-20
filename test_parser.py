@@ -50,7 +50,7 @@ test_case(
 test_case(
     "Nested object with custom type",
     """
-is defined Address:
+define Address:
     street is string and required
     city is string and required
 
