@@ -134,6 +134,10 @@ class Parser:
         # Parse properties
         self.parse_properties(self.schema.properties)
         
+        self.skip_trivia()
+        if self.current_token().type != TokenType.EOF:
+            self.error(f"Unexpected token {self.current_token().type.name} at root level")
+        
         return self.schema
     
     def parse_root_declaration(self):
@@ -212,10 +216,23 @@ class Parser:
                 break
             elif token.type in (TokenType.EOF,):
                 break
+                
+            if token.type == TokenType.IS:
+                self.advance()
+                if self.current_token().type == TokenType.CLOSED:
+                    target_dict["$closed"] = PropertyDef(name="$closed", is_container=False)
+                    self.advance()
+                    continue
+                elif self.current_token().type == TokenType.OPEN:
+                    target_dict["$open"] = PropertyDef(name="$open", is_container=False)
+                    self.advance()
+                    continue
+                else:
+                    self.error("Expected 'closed' or 'open' after 'is'")
 
             name_token = self.parse_name_token()
             if not name_token:
-                break
+                self.error(f"Expected property name, got {self.current_token().type.name}")
             name = name_token.value
             self.advance()
             
@@ -386,6 +403,11 @@ class Validator:
     
     def validate_object(self, obj: Dict, props: Dict[str, PropertyDef], path: str, errors: List[str], custom_types: Dict[str, PropertyDef], closed: bool = False):
         """Validate an object against expected properties."""
+        if "$closed" in props:
+            closed = True
+        elif "$open" in props:
+            closed = False
+            
         seen_keys = set()
         root_meta = {"$schema", "$version", "$owner", "$type"}
         
@@ -400,7 +422,7 @@ class Validator:
 
                 if prop_def.is_container:
                     if isinstance(val, dict):
-                        self.validate_object(val, prop_def.children, f"{path}.{key}", errors, custom_types)
+                        self.validate_object(val, prop_def.children, f"{path}.{key}", errors, custom_types, closed=closed)
                     else:
                         errors.append(f"{path}.{key}: Expected object, got {type(val).__name__}")
                 elif prop_def.constraint:
@@ -410,6 +432,8 @@ class Validator:
         
         # Check for missing required properties
         for key, prop_def in props.items():
+            if key.startswith("$"):
+                continue
             if key not in seen_keys:
                 if prop_def.constraint and self.constraint_requires(prop_def.constraint):
                     errors.append(f"{path}.{key}: Required property missing")
@@ -489,28 +513,28 @@ class Validator:
             return isinstance(value, (int, float)) and value <= constraint.value
         if constraint.type == "longer":
             if isinstance(value, (str, list)):
-                return len(value) >= constraint.value
+                return len(value) > constraint.value
             if isinstance(value, int) and not isinstance(value, bool):
-                return len(str(abs(value))) >= constraint.value
+                return len(str(abs(value))) > constraint.value
             return False
         if constraint.type == "shorter":
             if isinstance(value, (str, list)):
-                return len(value) <= constraint.value
+                return len(value) < constraint.value
             if isinstance(value, int) and not isinstance(value, bool):
-                return len(str(abs(value))) <= constraint.value
+                return len(str(abs(value))) < constraint.value
             return False
         if constraint.type == "larger":
             return isinstance(value, (int, float)) and value > constraint.value
         if constraint.type == "smaller":
             return isinstance(value, (int, float)) and value < constraint.value
         if constraint.type == "match":
-            return isinstance(value, str) and re.match(constraint.value, value) is not None
+            return isinstance(value, str) and re.fullmatch(constraint.value, value) is not None
         if constraint.type == "type":
             custom_type_name = constraint.value
             if custom_type_name in custom_types:
                 if isinstance(value, dict):
                     temp_errors = []
-                    self.validate_object(value, custom_types[custom_type_name].children, "temp", temp_errors, custom_types)
+                    self.validate_object(value, custom_types[custom_type_name].children, "temp", temp_errors, custom_types, closed=self.schema.closed)
                     return len(temp_errors) == 0
             return False
         

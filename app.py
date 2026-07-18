@@ -542,6 +542,10 @@ def validate():
         data = request.get_json()
         schema_text = data.get('schema', '').strip()
         json_text = data.get('json', '').strip()
+        print("--- SCHEMA ---")
+        print(repr(schema_text))
+        print("--- JSON ---")
+        print(repr(json_text))
         
         if not schema_text or not json_text:
             return jsonify({

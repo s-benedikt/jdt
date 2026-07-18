@@ -10,7 +10,7 @@ export function activate(context: vscode.ExtensionContext) {
     const extractDefinedTypes = (document: vscode.TextDocument): DefinedType[] => {
         const types: DefinedType[] = [];
         const text = document.getText();
-        const definedRegex = /is\s+defined\s+(\w+)/g;
+        const definedRegex = /define\s+(\w+)/g;
         let match;
         while ((match = definedRegex.exec(text)) !== null) {
             const pos = document.positionAt(match.index);
@@ -25,43 +25,41 @@ export function activate(context: vscode.ExtensionContext) {
         const beforeCursor = line.substring(0, position.character);
         
         // 1. Are we typing a constraint on the current line?
-        if (/\bis\s*$/.test(beforeCursor)) {
-            return 'after-is';
-        }
-        if (/\b(and|or|not)\s*$/.test(beforeCursor) || /,\s*$/.test(beforeCursor)) {
-            return 'chain-constraint';
-        }
-        
-        // 2. Multi-line context analysis based on indentation
-        const currentIndent = line.match(/^\s*/)?.[0].length || 0;
-        
-        // At root level (no indentation)
-        if (currentIndent === 0) {
-            if (/^\s*is\s/.test(line)) {
-                return 'type-definition'; // e.g. "is defined User:"
+        if (/\bis\b/.test(beforeCursor)) {
+            if (/\b(and|or)\s*$/.test(beforeCursor)) {
+                return 'after-operator';
             }
-            return 'root-level';
+            if (/,\s*$/.test(beforeCursor)) {
+                return 'after-comma';
+            }
+            if (/\bis\s*$/.test(beforeCursor)) {
+                return 'after-is';
+            }
+            if (/\(\s*$/.test(beforeCursor)) {
+                return 'after-paren';
+            }
+            return 'in-constraint-value';
         }
-        
-        // If we are indented, trace back to the parent container
-        if (currentIndent > 0) {
-            for (let i = position.line - 1; i >= 0; i--) {
-                const prevLine = document.lineAt(i).text;
-                if (prevLine.trim() === '' || prevLine.trim().startsWith('"""')) {
-                    continue;
-                }
-                
-                const prevIndent = prevLine.match(/^\s*/)?.[0].length || 0;
-                if (prevIndent < currentIndent) {
-                    if (prevLine.trim().endsWith(':')) {
-                        return 'container-body';
-                    }
-                    break;
-                }
+
+        // 2. Start of line or typing a keyword/name at start of line
+        if (/^\s*[a-zA-Z]*$/.test(beforeCursor)) {
+            const currentIndent = beforeCursor.match(/^\s*/)?.[0].length || 0;
+            if (currentIndent === 0) {
+                return 'root-start'; 
+            } else {
+                return 'container-start'; 
             }
         }
         
-        return 'default';
+        // 3. After a name (e.g. "name ", "name i") - ready for "is"
+        if (/^\s*[^\s:]+\s+[a-zA-Z]*$/.test(beforeCursor)) {
+            if (/^\s*define\s/.test(beforeCursor)) {
+                return 'after-define'; 
+            }
+            return 'after-name'; 
+        }
+        
+        return 'none';
     };
 
     const jdtProvider = vscode.languages.registerCompletionItemProvider(
@@ -72,24 +70,11 @@ export function activate(context: vscode.ExtensionContext) {
                 const context = getContext(document, position);
                 const definedTypes = extractDefinedTypes(document);
 
-                // Root parameters - only at root level
-                if (context === 'root-level') {
-                    const rootParams = [
-                        { label: 'schema', detail: 'URI for parent schema' },
-                        { label: 'version', detail: 'Version URI' },
-                        { label: 'owner', detail: "Owner's URL" },
-                        { label: 'type', detail: 'Root object type' }
-                    ];
-                    rootParams.forEach(param => {
-                        const item = new vscode.CompletionItem(param.label, vscode.CompletionItemKind.Property);
-                        item.detail = `JDT Root Parameter: ${param.detail}`;
-                        completions.push(item);
-                    });
-                    return completions;
-                }
-
+                const currentIndent = document.lineAt(position.line).text.match(/^\s*/)?.[0].length || 0;
+                const isConstraintContext = ['after-is', 'after-comma', 'after-operator', 'after-paren', 'in-constraint-value'].includes(context);
+                
                 // After 'is' keyword - suggest constraint types
-                if (context === 'after-is' || context === 'chain-constraint') {
+                if (isConstraintContext) {
                     // Simple type constraints
                     ['string', 'number', 'boolean', 'null', 'true', 'false'].forEach(type => {
                         const item = new vscode.CompletionItem(type, vscode.CompletionItemKind.TypeParameter);
@@ -105,6 +90,21 @@ export function activate(context: vscode.ExtensionContext) {
                         item.sortText = '1';
                         completions.push(item);
                     });
+
+                    if (currentIndent === 0) {
+                        const rootParams = [
+                            { label: 'schema', detail: 'URI for parent schema' },
+                            { label: 'version', detail: 'Version URI' },
+                            { label: 'owner', detail: "Owner's URL" },
+                            { label: 'type', detail: 'Root object type' }
+                        ];
+                        rootParams.forEach(param => {
+                            const item = new vscode.CompletionItem(param.label, vscode.CompletionItemKind.Property);
+                            item.detail = `JDT Root Parameter: ${param.detail}`;
+                            item.sortText = '1_root';
+                            completions.push(item);
+                        });
+                    }
 
                     // Array constraint
                     const arraySnippet = new vscode.CompletionItem('array', vscode.CompletionItemKind.Snippet);
@@ -128,14 +128,19 @@ export function activate(context: vscode.ExtensionContext) {
                         completions.push(item);
                     });
 
-                    // Operator constraints (only when chaining)
-                    if (context === 'chain-constraint') {
-                        ['and', 'or', 'not'].forEach(op => {
+                    // Operator constraints
+                    if (context === 'in-constraint-value') {
+                        ['and', 'or'].forEach(op => {
                             const item = new vscode.CompletionItem(op, vscode.CompletionItemKind.Operator);
                             item.detail = 'JDT Operator';
                             item.sortText = '0_op'; // High priority when chaining
                             completions.push(item);
                         });
+                    } else {
+                        const item = new vscode.CompletionItem('not', vscode.CompletionItemKind.Operator);
+                        item.detail = 'JDT Operator';
+                        item.sortText = '0_op';
+                        completions.push(item);
                     }
 
                     // Value/length constraints
@@ -164,39 +169,41 @@ export function activate(context: vscode.ExtensionContext) {
                     return completions;
                 }
 
-                // Container body - suggest key definitions and 'is' for constraints
-                if (context === 'container-body') {
+                if (context === 'root-start') {
                     const isKeyword = new vscode.CompletionItem('is', vscode.CompletionItemKind.Keyword);
-                    isKeyword.detail = 'Define container-level constraints';
+                    isKeyword.detail = 'JDT constraint keyword';
                     completions.push(isKeyword);
-                    
-                    const definedSnippet = new vscode.CompletionItem('defined', vscode.CompletionItemKind.Snippet);
-                    definedSnippet.insertText = new vscode.SnippetString('is defined ${1:TypeName}:\n\t${2:field}');
+
+                    const definedSnippet = new vscode.CompletionItem('define', vscode.CompletionItemKind.Snippet);
+                    definedSnippet.insertText = new vscode.SnippetString('define ${1:TypeName}:\n\t${2:field is type}');
                     definedSnippet.detail = 'Define custom data type';
                     completions.push(definedSnippet);
-                    
+
+                    const commentSnippet = new vscode.CompletionItem('"""', vscode.CompletionItemKind.Snippet);
+                    commentSnippet.insertText = new vscode.SnippetString('""" ${1:comment} """');
+                    commentSnippet.detail = 'Block comment';
+                    completions.push(commentSnippet);
+
                     return completions;
                 }
 
-                // Default: suggest generic items
-                const isKeyword = new vscode.CompletionItem('is', vscode.CompletionItemKind.Keyword);
-                isKeyword.detail = 'JDT constraint keyword';
-                completions.push(isKeyword);
+                if (context === 'container-start' || context === 'after-name') {
+                    const isKeyword = new vscode.CompletionItem('is', vscode.CompletionItemKind.Keyword);
+                    isKeyword.detail = 'JDT constraint keyword';
+                    completions.push(isKeyword);
+                    
+                    const commentSnippet = new vscode.CompletionItem('"""', vscode.CompletionItemKind.Snippet);
+                    commentSnippet.insertText = new vscode.SnippetString('""" ${1:comment} """');
+                    commentSnippet.detail = 'Block comment';
+                    completions.push(commentSnippet);
 
-                const definedSnippet = new vscode.CompletionItem('defined', vscode.CompletionItemKind.Snippet);
-                definedSnippet.insertText = new vscode.SnippetString('is defined ${1:TypeName}:\n\t${2:field is type}');
-                definedSnippet.detail = 'Define custom data type';
-                completions.push(definedSnippet);
-
-                const commentSnippet = new vscode.CompletionItem('"""', vscode.CompletionItemKind.Snippet);
-                commentSnippet.insertText = new vscode.SnippetString('""" ${1:comment} """');
-                commentSnippet.detail = 'Block comment';
-                completions.push(commentSnippet);
+                    return completions;
+                }
 
                 return completions;
             }
         },
-        ' ', 'i', 'a', 'o', 'n', 'm', '(', ':'
+        ' ', 'i', 'a', 'o', 'n', 'm', '(', ':', 'd'
     );
 
     // Diagnostics provider for basic validation

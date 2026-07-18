@@ -23,7 +23,7 @@
       "patterns": [
         {
           "name": "keyword.control.jdt",
-          "match": "\\b(is|defined|schema|version|owner|type)\\b"
+          "match": "\\b(is|define|schema|version|owner|type)\\b"
         },
         {
           "name": "keyword.operator.logical.jdt",

@@ -4,3 +4,6 @@ IMPLEMENTATION.md
 /examples/
 usage_examples.py
 .venv/
+jdt-auto-complete/src/extension.ts
+visualize_ast.py
+.gitignore

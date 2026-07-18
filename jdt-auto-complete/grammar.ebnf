@@ -1,0 +1,39 @@
+document        ::= {root_properties | custom_types} block EOF
+
+root_properties ::= "is" "schema" STRING
+                | "is" "version" STRING
+                | "is" "owner" STRING
+                | "is" "type" {"object" | "array"}
+                | "is" ("closed" | "open")
+
+custom_types    ::= "define" NAME ":" INDENT block DEDENT
+
+block           ::= [closed_const] {property}
+closed_const    ::= "is" ( "closed" | "open" )
+
+property        ::= container | key
+container       ::= NAME ":" INDENT block DEDENT
+key             ::= NAME "is" constraints
+
+constraints     ::= or_const {"," or_const}
+or_const        ::= and_const {"or" and_const}
+and_const       ::= not_const {"and" not_const}
+not_const       ::= "not" not_const
+                | prime_const
+prime_const     ::= "(" constraints ")"
+                | value
+                | literal
+                | occurence
+                | array_const
+                | limit
+                | match
+                | custom
+
+value           ::= "string" | "number" | "boolean" | "null"
+literal         ::= STRING | NUMBER | "true" | "false"
+occurence       ::= "required" | "optional"
+array_const     ::= "array" [ "(" constraints ")"]
+limit           ::= ( "minimum" | "maximum" | "longer" | "shorter" | "larger" | "smaller" ) NUMBER
+match           ::= "match" "(" REGEX ")"
+                | "match" "(" "[" NAME "]" ")"
+custom          ::= NAME
