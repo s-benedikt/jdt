@@ -59,15 +59,15 @@ start_time = time.perf_counter()
 for _ in range(ITERATIONS_PARSE):
     parser = Parser(jdt_schema_text)
     _ = parser.parse()
-jdt_parse_time = time.perf_counter() - start_time
+jdt_parse_time = (time.perf_counter() - start_time) / ITERATIONS_PARSE * 1000
 
 start_time = time.perf_counter()
 for _ in range(ITERATIONS_PARSE):
     jsonschema.Draft7Validator.check_schema(json_schema_obj)
-jsonschema_parse_time = time.perf_counter() - start_time
+jsonschema_parse_time = (time.perf_counter() - start_time) / ITERATIONS_PARSE * 1000
 
-print(f"JDT Lex+Parse: {jdt_parse_time:.4f} seconds")
-print(f"JSON Schema Check:   {jsonschema_parse_time:.4f} seconds")
+print(f"JDT Lex+Parse: {jdt_parse_time:.4f} ms")
+print(f"JSON Schema Check:   {jsonschema_parse_time:.4f} ms")
 if jdt_parse_time > jsonschema_parse_time:
     print(f"JSON Schema is {jdt_parse_time/jsonschema_parse_time:.1f}x faster at startup.\n")
 else:
@@ -79,8 +79,8 @@ ITERATIONS_VAL = 100
 document_sizes = [10, 100, 1000, 5000]
 
 print("--- Validation (Varying Document Size) ---")
-print(f"{'Size (Users)':<15} | {'JDT (s)':<12} | {'JSON Schema (s)':<15} | {'Speedup'}")
-print("-" * 65)
+print(f"{'Size (Users)':<15} | {'JDT (ms)':<12} | {'JSON Schema (ms)':<16} | {'Speedup'}")
+print("-" * 67)
 
 for num_users in document_sizes:
     payload = {
@@ -94,17 +94,17 @@ for num_users in document_sizes:
     start_time = time.perf_counter()
     for _ in range(ITERATIONS_VAL):
         jdt_validator.validate(payload)
-    jdt_val_time = time.perf_counter() - start_time
+    jdt_val_time = (time.perf_counter() - start_time) / ITERATIONS_VAL * 1000
 
     start_time = time.perf_counter()
     for _ in range(ITERATIONS_VAL):
         list(json_schema_compiled.iter_errors(payload)) 
-    jsonschema_val_time = time.perf_counter() - start_time
+    jsonschema_val_time = (time.perf_counter() - start_time) / ITERATIONS_VAL * 1000
 
     if jdt_val_time > jsonschema_val_time:
         speedup = f"JSONSchema {jdt_val_time/jsonschema_val_time:.1f}x faster"
     else:
         speedup = f"JDT {jsonschema_val_time/jdt_val_time:.1f}x faster"
         
-    print(f"{num_users:<15} | {jdt_val_time:<12.4f} | {jsonschema_val_time:<15.4f} | {speedup}")
+    print(f"{num_users:<15} | {jdt_val_time:<12.4f} | {jsonschema_val_time:<16.4f} | {speedup}")
 
