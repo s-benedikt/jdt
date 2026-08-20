@@ -306,12 +306,6 @@ class Lexer:
                 tokens.append(Token(TokenType.STRING, string_val, self.line, self.col))
                 continue
             
-            # Number
-            if ch.isdigit():
-                num = self.read_number()
-                tokens.append(Token(TokenType.NUMBER, num, self.line, self.col))
-                continue
-            
             # Regex
             if ch == '(':
                 # Look ahead for regex pattern
@@ -338,11 +332,23 @@ class Lexer:
                 self.advance()
                 continue
             
-            # Name/keyword
+            # Number, Name or keyword
             name = self.read_name()
             if name:
-                token_type = self.KEYWORDS.get(name, TokenType.NAME)
-                tokens.append(Token(token_type, name, self.line, self.col))
+                is_num = False
+                num_val = None
+                if bool(re.fullmatch(r'-?\d+(\.\d+)?', name)):
+                    is_num = True
+                    if '.' in name:
+                        num_val = float(name)
+                    else:
+                        num_val = int(name)
+                
+                if is_num:
+                    tokens.append(Token(TokenType.NUMBER, num_val, self.line, self.col))
+                else:
+                    token_type = self.KEYWORDS.get(name, TokenType.NAME)
+                    tokens.append(Token(token_type, name, self.line, self.col))
             else:
                 self.error(f"Unexpected character: {ch}")
         

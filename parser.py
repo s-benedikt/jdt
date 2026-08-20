@@ -69,6 +69,8 @@ class Parser:
         TokenType.NUMBER_TYPE,
         TokenType.BOOLEAN_TYPE,
         TokenType.OBJECT_TYPE,
+        TokenType.NUMBER,
+        TokenType.STRING,
     }
     
     def __init__(self, schema_text: str):
@@ -190,7 +192,7 @@ class Parser:
         if not name_token:
             self.error("Expected name after 'define'")
         self.advance()
-        name = name_token.value
+        name = str(name_token.value)
         
         self.expect(TokenType.COLON)
         self.skip_trivia()
@@ -233,7 +235,7 @@ class Parser:
             name_token = self.parse_name_token()
             if not name_token:
                 self.error(f"Expected property name, got {self.current_token().type.name}")
-            name = name_token.value
+            name = str(name_token.value)
             self.advance()
             
             is_container = self.current_token().type == TokenType.COLON
