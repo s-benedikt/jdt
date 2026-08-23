@@ -23,7 +23,7 @@ not_const       ::= "not" not_const
 prime_const     ::= "(" constraints ")"
                 | value
                 | literal
-                | occurence
+                | occurrence
                 | array_const
                 | limit
                 | match
