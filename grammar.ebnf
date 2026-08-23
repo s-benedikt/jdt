@@ -3,7 +3,7 @@ document        ::= {root_properties | custom_types} block EOF
 root_properties ::= "is" "schema" STRING
                 | "is" "version" STRING
                 | "is" "owner" STRING
-                | "is" "type" {"object" | "array"}
+                | "is" "type" ("object" | "array")
                 | "is" ("closed" | "open")
 
 custom_types    ::= "define" NAME ":" INDENT block DEDENT
