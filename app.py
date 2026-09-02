@@ -342,7 +342,7 @@ HTML_TEMPLATE = """
     </div>
     
     <div class="footer" style="text-align: center; margin-top: 2rem; font-size: 0.85rem; color: #6b7280;">
-        Copyright &copy; 2026 Benedikt Sennebogen. All rights reserved. | <a href="https://www.uni-regensburg.de/impressum" target="_blank" rel="noopener noreferrer" style="color: #6b7280; text-decoration: underline;">Impressum</a>
+        Copyright &copy; 2026 Benedikt Sennebogen. All rights reserved. | <a href="https://www.uni-regensburg.de/impressum" target="_blank" rel="noopener noreferrer" style="color: #6b7280; text-decoration: underline;">Legal Notice</a>
     </div>
 
     <script>
