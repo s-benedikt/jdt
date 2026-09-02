@@ -9,6 +9,18 @@ except ImportError:
     print("Please install it using: pip install jsonschema")
     exit(1)
 
+try:
+    import jsonschema_rs
+except ImportError:
+    jsonschema_rs = None
+    print("Warning: 'jsonschema_rs' package is not installed. Skipping its benchmark.")
+
+try:
+    import fastjsonschema
+except ImportError:
+    fastjsonschema = None
+    print("Warning: 'fastjsonschema' package is not installed. Skipping its benchmark.")
+
 # Import JDT
 from parser import Parser, Validator
 
@@ -51,6 +63,12 @@ jdt_schema_parsed = jdt_parser.parse()
 jdt_validator = Validator(jdt_schema_parsed)
 json_schema_compiled = jsonschema.Draft7Validator(json_schema_obj)
 
+if jsonschema_rs:
+    jsonschema_rs_compiled = jsonschema_rs.Draft7Validator(json_schema_obj)
+
+if fastjsonschema:
+    fastjsonschema_compiled = fastjsonschema.compile(json_schema_obj)
+
 # --- PARSING/COMPILATION BENCHMARK ---
 ITERATIONS_PARSE = 1000
 print(f"\n--- Parsing/Compilation ({ITERATIONS_PARSE} iterations) ---")
@@ -66,21 +84,30 @@ for _ in range(ITERATIONS_PARSE):
     jsonschema.Draft7Validator.check_schema(json_schema_obj)
 jsonschema_parse_time = (time.perf_counter() - start_time) / ITERATIONS_PARSE * 1000
 
-print(f"JDT Lex+Parse: {jdt_parse_time:.4f} ms")
-print(f"JSON Schema Check:   {jsonschema_parse_time:.4f} ms")
-if jdt_parse_time > jsonschema_parse_time:
-    print(f"JSON Schema is {jdt_parse_time/jsonschema_parse_time:.1f}x faster at startup.\n")
-else:
-    print(f"JDT is {jsonschema_parse_time/jdt_parse_time:.1f}x faster at startup.\n")
+print(f"JDT Lex+Parse:       {jdt_parse_time:.4f} ms")
+print(f"JSON Schema (py):    {jsonschema_parse_time:.4f} ms")
 
+if jsonschema_rs:
+    start_time = time.perf_counter()
+    for _ in range(ITERATIONS_PARSE):
+        jsonschema_rs.Draft7Validator(json_schema_obj)
+    jsonschema_rs_parse_time = (time.perf_counter() - start_time) / ITERATIONS_PARSE * 1000
+    print(f"JSON Schema (rs):    {jsonschema_rs_parse_time:.4f} ms")
+
+if fastjsonschema:
+    start_time = time.perf_counter()
+    for _ in range(ITERATIONS_PARSE):
+        fastjsonschema.compile(json_schema_obj)
+    fastjsonschema_parse_time = (time.perf_counter() - start_time) / ITERATIONS_PARSE * 1000
+    print(f"fastjsonschema:      {fastjsonschema_parse_time:.4f} ms")
 
 # --- VALIDATION BENCHMARK (Different Document Sizes) ---
 ITERATIONS_VAL = 100
 document_sizes = [10, 100, 1000, 5000]
 
-print("--- Validation (Varying Document Size) ---")
-print(f"{'Size (Users)':<15} | {'JDT (ms)':<12} | {'JSON Schema (ms)':<16} | {'Speedup'}")
-print("-" * 67)
+print("\n--- Validation (Varying Document Size) ---")
+print(f"{'Size (Users)':<15} | {'JDT (ms)':<12} | {'jsonschema (ms)':<16} | {'jsonschema_rs (ms)':<20} | {'fastjsonschema (ms)':<20}")
+print("-" * 95)
 
 for num_users in document_sizes:
     payload = {
@@ -101,10 +128,20 @@ for num_users in document_sizes:
         list(json_schema_compiled.iter_errors(payload)) 
     jsonschema_val_time = (time.perf_counter() - start_time) / ITERATIONS_VAL * 1000
 
-    if jdt_val_time > jsonschema_val_time:
-        speedup = f"JSONSchema {jdt_val_time/jsonschema_val_time:.1f}x faster"
-    else:
-        speedup = f"JDT {jsonschema_val_time/jdt_val_time:.1f}x faster"
-        
-    print(f"{num_users:<15} | {jdt_val_time:<12.4f} | {jsonschema_val_time:<16.4f} | {speedup}")
+    jsonschema_rs_val_time = 0
+    if jsonschema_rs:
+        start_time = time.perf_counter()
+        for _ in range(ITERATIONS_VAL):
+            jsonschema_rs_compiled.is_valid(payload)
+        jsonschema_rs_val_time = (time.perf_counter() - start_time) / ITERATIONS_VAL * 1000
 
+    fastjsonschema_val_time = 0
+    if fastjsonschema:
+        start_time = time.perf_counter()
+        for _ in range(ITERATIONS_VAL):
+            fastjsonschema_compiled(payload)
+        fastjsonschema_val_time = (time.perf_counter() - start_time) / ITERATIONS_VAL * 1000
+
+    rs_str = f"{jsonschema_rs_val_time:<20.4f}" if jsonschema_rs else f"{'N/A':<20}"
+    fast_str = f"{fastjsonschema_val_time:<20.4f}" if fastjsonschema else f"{'N/A':<20}"
+    print(f"{num_users:<15} | {jdt_val_time:<12.4f} | {jsonschema_val_time:<16.4f} | {rs_str} | {fast_str}")

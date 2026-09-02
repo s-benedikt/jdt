@@ -540,7 +540,7 @@ class Validator:
                     return len(temp_errors) == 0
             return False
         
-        return True
+        return False
 
 
 def parse_and_validate(schema_text: str, json_text: str) -> Tuple[bool, List[str]]:
