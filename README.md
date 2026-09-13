@@ -15,6 +15,9 @@ It contains the following files and folders:
 - `visualization.py`: Creates a visualization of the AST using `visualize_ast.py`.
 - `requirements.txt`: Python dependencies for the project.
 - `app.py`: Web interface for JDT.
+- `benchmark.py`: Benchmarking script for performance testing.
+- `README.md`: This file.
+- `LICENSE.md`: License for the project.
 
 To execute, go to `app.py` and run the script. You will need to create a virtual Python environment and install the dependencies listed in `requirements.txt`.
 
