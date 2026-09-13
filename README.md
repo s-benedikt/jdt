@@ -1,6 +1,6 @@
 # JDT
 
-This repository contains a parser and validator for the JSON Document Type (JDT) schema language and several accessories.
+This repository contains a parser and validator for the JSON Document Type (JDT) schema language, along with several accessories.
 
 It contains the following files and folders:
 - `parser.py`: The main parser and validator implementation.
@@ -12,17 +12,17 @@ It contains the following files and folders:
 - `.github/`: Directory containing GitHub Copilot instructions.
 - `jdt.md` and `jdt.pdf`: Specification of the JDT schema language.
 - `grammar.ebnf`: JDT EBNF grammar.
-- `visualization.py`: Creates a visualization of the AST by `visualize_ast.py`.
+- `visualization.py`: Creates a visualization of the AST using `visualize_ast.py`.
 - `requirements.txt`: Python dependencies for the project.
 - `app.py`: Web interface for JDT.
 
 To execute, go to `app.py` and run the script. You will need to create a virtual Python environment and install the dependencies listed in `requirements.txt`.
 
-You can then lauch the web interface in your browser at `http://127.0.0.1:5000` or go to `https://jdt.fids.ur.de` to use the hosted version.
+You can then launch the web interface in your browser at `http://127.0.0.1:5000` or go to `https://jdt.fids.ur.de` to use the hosted version.
 
-To use the VS Code extension, you need Visual Studio Code. Open the `extension.ts` file and, in the menu bar, click `Run` > `Start Debugging`. A new window will open with the extension enabled. All `*.jdt` files will be highlighted and auto-completion will be available. GitHub Copilot will work depending on your settings and subscription. In the bottom right corner, you can click on the Copilot icon to enable or disable it. In the future, the extension will be available in the VS Code marketplace.
+To use the VS Code extension, you need Visual Studio Code. Open the `extension.ts` file and, in the menu bar, click `Run` > `Start Debugging`. A new window will open with the extension enabled. All `*.jdt` files will be highlighted and auto-completion will be available. GitHub Copilot will work depending on your settings and subscription. In the bottom-right corner, you can click the Copilot icon to enable or disable Copilot. In the future, the extension will be available in the VS Code Marketplace.
 
-In the following is a short description of the functionality of the lexer and parser.
+The following is a short description of the functionality of the lexer and parser.
 
 
 Lexer functionality:
