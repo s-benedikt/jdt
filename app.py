@@ -168,7 +168,7 @@ HTML_TEMPLATE = """
             grid-column: 1 / -1;
             display: flex;
             gap: 10px;
-            justify-content: center;
+            justify-content: space-between;
         }
         
         button {
@@ -213,12 +213,12 @@ HTML_TEMPLATE = """
             cursor: not-allowed;
         }
         
-        .btn-clear {
+        .btn-clear, .btn-example {
             background: #edf2f7;
             color: #2d3748;
         }
         
-        .btn-clear:hover {
+        .btn-clear:hover, .btn-example:hover {
             background: #e2e8f0;
         }
         
@@ -335,8 +335,11 @@ HTML_TEMPLATE = """
             <div class="result" id="result"></div>
             
             <div class="button-group">
+                <div class="left-buttons" style="display: flex; gap: 10px;">
+                    <button class="btn-example" id="exampleBtn" onclick="loadExample()">Load Example</button>
+                    <button class="btn-clear" id="clearBtn" onclick="clearAll()">Clear</button>
+                </div>
                 <button class="btn-validate" id="validateBtn" onclick="validate()">Validate</button>
-                <button class="btn-clear" id="clearBtn" onclick="clearAll()">Clear</button>
             </div>
         </div>
     </div>
@@ -521,6 +524,31 @@ HTML_TEMPLATE = """
         function clearAll() {
             schemaInput.value = '';
             jsonInput.value = '';
+            result.classList.remove('show');
+        }
+        
+        function loadExample() {
+            schemaInput.value = `is type object
+user: 
+    is closed
+    id is number, required, not null
+    name is required, not boolean
+    age is optional, (number or null)
+    hobbies is array(string), required
+    eyecolor is "blue" or "green" or "brown"`;
+            jsonInput.value = `{
+  "user": {
+    "id": 1,
+    "name": "Jane Doe",
+    "age": 28,
+    "hobbies": [
+      "reading",
+      "coding",
+      "hiking"
+    ],
+    "eyecolor": "blue"      
+  }
+}`;
             result.classList.remove('show');
         }
         
