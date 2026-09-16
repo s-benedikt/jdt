@@ -65,10 +65,9 @@ HTML_TEMPLATE = """
             padding: 30px;
         }
         
-        @media (max-width: 768px) {
-            .content {
-                grid-template-columns: 1fr;
-            }
+        .left-buttons {
+            display: flex;
+            gap: 10px;
         }
         
         .panel {
@@ -283,6 +282,51 @@ HTML_TEMPLATE = """
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+                background: white;
+            }
+            
+            .container {
+                border-radius: 0;
+                box-shadow: none;
+            }
+            
+            .header {
+                padding: 15px;
+            }
+            
+            .content {
+                grid-template-columns: 1fr;
+                padding: 15px;
+                gap: 15px;
+            }
+            
+            textarea {
+                min-height: 120px !important;
+            }
+            
+            .button-group {
+                flex-direction: column-reverse;
+                gap: 10px;
+                align-items: stretch;
+            }
+            
+            .left-buttons {
+                flex-direction: column;
+                width: 100%;
+            }
+            
+            .left-buttons button {
+                width: 100%;
+            }
+            
+            .btn-validate {
+                max-width: none !important;
+                width: 100% !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -335,7 +379,7 @@ HTML_TEMPLATE = """
             <div class="result" id="result"></div>
             
             <div class="button-group">
-                <div class="left-buttons" style="display: flex; gap: 10px;">
+                <div class="left-buttons">
                     <button class="btn-example" id="exampleBtn" onclick="loadExample()">Load Example</button>
                     <button class="btn-clear" id="clearBtn" onclick="clearAll()">Clear</button>
                 </div>
