@@ -389,7 +389,11 @@ HTML_TEMPLATE = """
     </div>
     
     <div class="footer" style="text-align: center; margin-top: 2rem; font-size: 0.85rem; color: #6b7280;">
-        Copyright &copy; 2026 Benedikt Sennebogen. All rights reserved. | <a href="https://www.uni-regensburg.de/impressum" target="_blank" rel="noopener noreferrer" style="color: #6b7280; text-decoration: underline;">Legal Notice</a>
+        Copyright &copy; 2026 Benedikt Sennebogen. Some rights reserved.
+    </div>
+
+    <div class="footer" style="text-align: center; margin-top: 0rem; font-size: 0.85rem; color: #6b7280;">
+          <a href="https://www.uni-regensburg.de/impressum" target="_blank" rel="noopener noreferrer" style="color: #6b7280; text-decoration: underline;">Legal Notice</a>  |  <a href="mailto:benedikt.sennebogen@stud.uni-regensburg.de" target="_blank" rel="noopener noreferrer" style="color: #6b7280; text-decoration: underline;">E-Mail</a>  |  <a href="https://github.com/s-benedikt/jdt" target="_blank" rel="noopener noreferrer" style="color: #6b7280; text-decoration: underline;">GitHub</a>
     </div>
 
     <script>
