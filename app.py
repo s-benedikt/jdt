@@ -2,7 +2,11 @@
 """Simple web interface for JDT schema validation."""
 
 from flask import Flask, render_template_string, request, jsonify
-from parser import parse_and_validate
+try:
+    from jdt import parse_and_validate
+except ImportError:
+    from parser import parse_and_validate
+
 import json
 
 app = Flask(__name__)

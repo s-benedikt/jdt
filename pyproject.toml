@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jdt-schema"
+version = "0.1.0"
+description = "Parser and validator for the JSON Document Type (JDT) schema language"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+authors = [
+    { name = "Benedikt Sennebogen" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = []
+
+[project.optional-dependencies]
+web = ["flask"]
+benchmark = ["jsonschema", "fastjsonschema", "jsonschema-rs"]
+
+[project.urls]
+Homepage = "https://github.com/s-benedikt/jdt"
+Repository = "https://github.com/s-benedikt/jdt.git"
+
+[tool.setuptools]
+packages = ["jdt"]
