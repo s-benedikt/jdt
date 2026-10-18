@@ -78,6 +78,14 @@ test_case(
     False
 )
 
+# Test 5b: Array root
+test_case(
+    "Array root type",
+    "is type array",
+    '["reading", "coding"]',
+    True
+)
+
 # Test 6: Range constraints
 test_case(
     "Range validation",
@@ -143,5 +151,5 @@ test_case(
 )
 
 print(f"\n{'=' * 60}")
-print(f"{passed_tests_counter} of 13 Tests Passed!")
+print(f"{passed_tests_counter} of 14 Tests Passed!")
 print(f"{'=' * 60}")

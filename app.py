@@ -132,20 +132,94 @@ HTML_TEMPLATE = """
         
         .textarea-wrapper {
             position: relative;
-            flex: 1;
+            /* Keep both editors at a stable height; their text scrolls inside. */
+            flex: 0 0 350px;
+            height: 350px;
+            display: flex;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            background: white;
+            overflow: hidden;
+            box-sizing: border-box;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .textarea-wrapper:focus-within {
+            border-color: #667eea;
+            box-shadow: 0 0 0 1px #667eea;
+        }
+
+        .line-numbers {
+            width: 44px;
+            min-width: 44px;
+            padding: 10px 8px 10px 0;
+            background: #f8fafc;
+            color: #a0aec0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            line-height: 20px;
+            text-align: right;
+            user-select: none;
+            overflow: hidden;
+            border-right: 1px solid #edf2f7;
+            box-sizing: border-box;
+            white-space: pre;
+            pointer-events: none;
+        }
+
+        .line-numbers span {
+            display: block;
+            height: 20px;
+            padding-right: 2px;
+        }
+
+        .line-numbers .error-line {
+            background: #fee2e2;
+            color: #b91c1c;
+            font-weight: 700;
+        }
+
+        .error-line-highlight {
+            position: absolute;
+            left: 44px;
+            right: 0;
+            height: 20px;
+            background: #fee2e2;
+            border-left: 3px solid #ef4444;
+            display: none;
+            pointer-events: none;
+            z-index: 1;
         }
         
         textarea {
+            position: relative;
+            z-index: 2;
             width: 100%;
+            flex: 1;
+            min-width: 0;
+            min-height: 0;
+            height: 100%;
             padding: 10px;
-            border: 1px solid #e2e8f0;
-            border-radius: 4px;
+            margin: 0;
+            border: none;
+            border-radius: 0;
             font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
             font-size: 12px;
-            resize: vertical;
-            min-height: 350px;
+            line-height: 20px;
+            resize: none;
             color: #2d3748;
+            background: white;
             display: block;
+            box-sizing: border-box;
+            white-space: pre;
+            overflow-wrap: normal;
+            overflow: auto;
+            tab-size: 4;
+            outline: none;
+        }
+
+        textarea.has-error {
+            background: transparent;
         }
         
         input[type="file"] {
@@ -307,8 +381,13 @@ HTML_TEMPLATE = """
                 gap: 15px;
             }
             
+            .textarea-wrapper {
+                flex-basis: 150px;
+                height: 150px;
+            }
+
             textarea {
-                min-height: 120px !important;
+                min-height: 0 !important;
             }
             
             .button-group {
@@ -353,8 +432,10 @@ HTML_TEMPLATE = """
                             <div class="dropzone-text">Drop file here</div>
                         </div>
                     </div>
-                    <input type="file" id="schemaFile" accept=".jdt,.txt,.json">
-                    <textarea id="schemaInput" placeholder="Paste your JDT schema here or drag a file..."></textarea>
+                    <input type="file" id="schemaFile" accept=".jdt,.txt">
+                    <div class="line-numbers" id="schemaLineNumbers">1</div>
+                    <div class="error-line-highlight" aria-hidden="true"></div>
+                    <textarea id="schemaInput" placeholder="Paste your JDT schema here or drag a file..." spellcheck="false"></textarea>
                 </div>
             </div>
             
@@ -371,7 +452,9 @@ HTML_TEMPLATE = """
                         </div>
                     </div>
                     <input type="file" id="jsonFile" accept=".json,.txt">
-                    <textarea id="jsonInput" placeholder="Paste your JSON file here or drag a file..."></textarea>
+                    <div class="line-numbers" id="jsonLineNumbers">1</div>
+                    <div class="error-line-highlight" aria-hidden="true"></div>
+                    <textarea id="jsonInput" placeholder="Paste your JSON file here or drag a file..." spellcheck="false"></textarea>
                 </div>
             </div>
             
@@ -475,10 +558,16 @@ HTML_TEMPLATE = """
             `;
         }
         
-        function setupFileInput(fileInput, textarea) {
+        function setupFileInput(fileInput, textarea, allowedExtensions) {
             fileInput.addEventListener('change', (e) => {
                 const file = e.target.files[0];
                 if (file) {
+                    const extension = file.name.toLowerCase().split('.').pop();
+                    if (!allowedExtensions.includes(extension)) {
+                        showError(`Invalid file format. Only ${allowedExtensions.join(', ')} files are allowed.`);
+                        fileInput.value = '';
+                        return;
+                    }
                     const reader = new FileReader();
                     reader.onload = (event) => {
                         textarea.value = event.target.result;
@@ -491,15 +580,56 @@ HTML_TEMPLATE = """
         setupDropZone(schemaDrop, schemaInput, schemaFile, ['jdt', 'txt']);
         setupDropZone(jsonDrop, jsonInput, jsonFile, ['json', 'txt']);
         
-        setupFileInput(schemaFile, schemaInput);
-        setupFileInput(jsonFile, jsonInput);
+        setupFileInput(schemaFile, schemaInput, ['jdt', 'txt']);
+        setupFileInput(jsonFile, jsonInput, ['json', 'txt']);
         
         browseSchemBtn.addEventListener('click', () => schemaFile.click());
         browseJsonBtn.addEventListener('click', () => jsonFile.click());
+
+        function lineForJsonPath(path) {
+            const parts = path.replace(/^\\$\\.?/, '').split('.').filter(Boolean);
+            const key = parts.at(-1);
+            if (!key) return 1;
+
+            const escapedKey = key.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');
+            const match = new RegExp('"' + escapedKey + '"\\s*:').exec(jsonInput.value);
+            if (!match) return 1;
+            return jsonInput.value.slice(0, match.index).split('\\n').length;
+        }
+
+        function highlightError(message, sourceHint = '') {
+            const location = String(message).match(/line +([0-9]+)(?: *(?:,|at)? *col(?:umn)? +([0-9]+))?/i);
+            const isJsonError = sourceHint === 'json' || /^Invalid JSON:/i.test(String(message));
+            const editor = isJsonError ? jsonInput : schemaInput;
+            let line = location ? Number(location[1]) : 1;
+
+            if (!location && sourceHint === 'validation') {
+                const path = String(message).match(/^([$][^:]*):/);
+                line = path ? lineForJsonPath(path[1]) : 1;
+                return markEditorLine(jsonInput, line);
+            }
+            markEditorLine(editor, line);
+        }
+
+        function markEditorLine(editor, line) {
+            window.setEditorErrorLines?.(editor.id, [line]);
+            editor.classList.add('has-error');
+            editor.focus();
+            editor.scrollTop = Math.max(0, (line - 2) * 20);
+            editor.dispatchEvent(new Event('scroll'));
+        }
+
+        function clearErrorHighlights() {
+            [schemaInput, jsonInput].forEach((editor) => {
+                editor.classList.remove('has-error');
+                window.setEditorErrorLines?.(editor.id, []);
+            });
+        }
         
         async function validate() {
             const schemaText = schemaInput.value.trim();
             const jsonText = jsonInput.value.trim();
+            clearErrorHighlights();
             
             if (!schemaText || !jsonText) {
                 alert('Please provide both a JDT schema and a JSON file');
@@ -525,12 +655,16 @@ HTML_TEMPLATE = """
                 
                 if (data.success) {
                     displayResult(data.valid, data.errors);
+                    if (!data.valid && data.errors?.length) {
+                        highlightError(data.errors[0], 'validation');
+                    }
                 } else {
                     result.classList.add('show', 'invalid');
                     result.innerHTML = `
                         <h3>❌ Error</h3>
                         <p>${data.error}</p>
                     `;
+                    highlightError(data.error, /^Invalid JSON:/i.test(data.error) ? 'json' : 'schema');
                 }
             } catch (error) {
                 result.classList.add('show', 'invalid');
@@ -576,10 +710,12 @@ HTML_TEMPLATE = """
         function clearAll() {
             schemaInput.value = '';
             jsonInput.value = '';
+            clearErrorHighlights();
             result.classList.remove('show');
         }
         
         function loadExample() {
+            clearErrorHighlights();
             schemaInput.value = `is type object
 user: 
     is closed
@@ -609,6 +745,106 @@ user:
                 validate();
             }
         });
+    </script>
+    <script>
+        (function() {
+            try {
+                const NL = String.fromCharCode(10);
+                const gutterUpdaters = {};
+
+                function setupGutter(textareaId, gutterId) {
+                    const textarea = document.getElementById(textareaId);
+                    const gutter = document.getElementById(gutterId);
+                    const lineHighlight = textarea?.parentElement?.querySelector('.error-line-highlight');
+                    if (!textarea || !gutter) return () => {};
+                    let errorLines = new Set();
+
+                    function positionLineHighlight() {
+                        const line = [...errorLines][0];
+                        if (!line || !lineHighlight) {
+                            if (lineHighlight) lineHighlight.style.display = 'none';
+                            return;
+                        }
+                        lineHighlight.style.top = `${10 + ((line - 1) * 20) - textarea.scrollTop}px`;
+                        lineHighlight.style.display = 'block';
+                    }
+
+                    function update() {
+                        const lines = textarea.value.split(NL).length || 1;
+                        const fragment = document.createDocumentFragment();
+                        for (let i = 1; i <= lines; i++) {
+                            const number = document.createElement('span');
+                            number.textContent = i;
+                            if (errorLines.has(i)) number.classList.add('error-line');
+                            fragment.appendChild(number);
+                        }
+                        gutter.replaceChildren(fragment);
+                        gutter.scrollTop = textarea.scrollTop;
+                        positionLineHighlight();
+                    }
+
+                    gutterUpdaters[textareaId] = (lines) => {
+                        errorLines = new Set(lines);
+                        update();
+                    };
+
+                    textarea.addEventListener('input', () => {
+                        errorLines.clear();
+                        textarea.classList.remove('has-error');
+                        update();
+                    });
+                    textarea.addEventListener('change', update);
+                    textarea.addEventListener('keyup', update);
+                    textarea.addEventListener('paste', () => setTimeout(update, 20));
+                    textarea.addEventListener('cut', () => setTimeout(update, 20));
+                    textarea.addEventListener('scroll', () => {
+                        gutter.scrollTop = textarea.scrollTop;
+                        positionLineHighlight();
+                    });
+
+                    textarea.addEventListener('keydown', (e) => {
+                        if (e.key === 'Tab') {
+                            e.preventDefault();
+                            const start = textarea.selectionStart;
+                            const end = textarea.selectionEnd;
+                            textarea.setRangeText('    ', start, end, 'end');
+                            update();
+                        }
+                    });
+
+                    if (window.ResizeObserver) {
+                        new ResizeObserver(() => {
+                            gutter.scrollTop = textarea.scrollTop;
+                            positionLineHighlight();
+                        }).observe(textarea);
+                    }
+
+                    return update;
+                }
+
+                const updateSchema = setupGutter('schemaInput', 'schemaLineNumbers');
+                const updateJson = setupGutter('jsonInput', 'jsonLineNumbers');
+                window.setEditorErrorLines = (textareaId, lines) => {
+                    gutterUpdaters[textareaId]?.(lines);
+                };
+
+                function updateAll() {
+                    updateSchema();
+                    updateJson();
+                }
+
+                document.getElementById('exampleBtn')?.addEventListener('click', () => setTimeout(updateAll, 50));
+                document.getElementById('clearBtn')?.addEventListener('click', () => setTimeout(updateAll, 50));
+                document.getElementById('schemaFile')?.addEventListener('change', () => setTimeout(updateAll, 100));
+                document.getElementById('jsonFile')?.addEventListener('change', () => setTimeout(updateAll, 100));
+                document.getElementById('schemaDrop')?.addEventListener('drop', () => setTimeout(updateAll, 150));
+                document.getElementById('jsonDrop')?.addEventListener('drop', () => setTimeout(updateAll, 150));
+
+                updateAll();
+            } catch (err) {
+                console.error('Line numbers error:', err);
+            }
+        })();
     </script>
 </body>
 </html>

@@ -406,6 +406,12 @@ class Validator:
             except json.JSONDecodeError as e:
                 return False, [f"Invalid JSON: {str(e)}"]
 
+        if self.schema.root_type == "array":
+            if not isinstance(json_data, list):
+                errors.append("Root must be an array")
+                return False, errors
+            return True, errors
+
         if not isinstance(json_data, dict):
             errors.append("Root must be an object")
             return False, errors
