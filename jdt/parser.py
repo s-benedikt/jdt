@@ -397,9 +397,15 @@ class Validator:
         self.schema = schema
     
     def validate(self, json_data: Any) -> Tuple[bool, List[str]]:
-        """Validate JSON data. Returns (is_valid, errors)."""
+        """Validate JSON data. Accepts either a Python dict or a JSON string. Returns (is_valid, errors)."""
         errors = []
         
+        if isinstance(json_data, str):
+            try:
+                json_data = json.loads(json_data)
+            except json.JSONDecodeError as e:
+                return False, [f"Invalid JSON: {str(e)}"]
+
         if not isinstance(json_data, dict):
             errors.append("Root must be an object")
             return False, errors

@@ -26,6 +26,16 @@ def compile(schema_source: str) -> Validator:
     return Validator(schema)
 
 
+def load(file_or_path: Any) -> Validator:
+    """Load a JDT schema from a file path or file object and return a Validator."""
+    if hasattr(file_or_path, "read"):
+        content = file_or_path.read()
+    else:
+        with open(file_or_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    return compile(content)
+
+
 def validate(
     schema: Union[str, Schema, Validator],
     data: Any
@@ -68,6 +78,7 @@ __all__ = [
     "Token",
     "parse_and_validate",
     "compile",
+    "load",
     "validate",
     "__version__",
 ]
