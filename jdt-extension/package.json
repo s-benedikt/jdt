@@ -1,7 +1,8 @@
 {
-  "name": "jdt-auto-complete",
-  "displayName": "jdt auto-complete",
-  "description": "Auto-complete tool for the JDT schema language",
+  "name": "jdt-extension",
+  "displayName": "JDT Extension",
+  "publisher": "benedikt",
+  "description": "Extension for JDT schema language",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.120.0"
@@ -16,7 +17,7 @@
   "contributes": {
     "commands": [
       {
-        "command": "jdt-auto-complete.helloWorld",
+        "command": "jdt-extension.helloWorld",
         "title": "Hello World"
       }
     ],
@@ -52,5 +53,9 @@
     "typescript": "^5.9.3",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2"
-  }
+  },
+  "repository": {
+  "type": "git",
+  "url": "https://github.com/s-benedikt/jdt.git"
+}
 }

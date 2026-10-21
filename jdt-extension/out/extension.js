@@ -167,7 +167,7 @@ function activate(context) {
                     completions.push(item);
                 });
                 // Undefined constraints
-                ['closed', 'open', 'unordered', 'ordered'].forEach(uc => {
+                ['closed', 'open'].forEach(uc => {
                     const item = new vscode.CompletionItem(uc, vscode.CompletionItemKind.Keyword);
                     item.detail = 'Undefined key constraint';
                     item.sortText = '5';
